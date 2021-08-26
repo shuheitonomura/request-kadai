@@ -1,0 +1,169 @@
+    <!DOCTYPE html>
+    <html lang="ja">
+
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/sample.css">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>RIQUEST</title>
+    <header>
+        <div class="hamburger-menu">
+            <input type="checkbox" id="menu-btn-check">
+            <label for="menu-btn-check" class="menu-btn"><span></span></label>
+        </div>
+    </header>
+    </head>
+
+    <body>
+    <h1>REQUEST CHANNEL</h1>
+    <!-- 入力場所を作成しよう -->
+    <form>
+        <fieldset>
+        <legend>お客さま情報</legend>
+        <div>
+        <p>名前:</p>
+        <input type="text" id="name">
+        </div>
+        <div>
+        <p>電話番号:</p>
+        <input type="text" id="text">
+        </div>
+
+        <p>雇用状況：</p>
+        <select name="job" id="job">
+        <option value="会社員">会社員</option>
+        <option value="会社役員">会社役員</option>
+        <option value="自営業">自営業</option>
+        <option value="公務員">公務員</option>
+        <option value="パートタイム">パートタイム</option>
+        <option value="無職・学生・退職者">無職・学生・退職者</option>
+        <option value="未就学児">未就学児</option>
+        </select>
+
+        <p>業種：</p>
+        <select name="industry" id="industry">
+        <option value="農林水産業">農林水産業</option>
+        <option value="美容・ファッション">美容・ファッション</option>
+        <option value="建設業">建設業</option>
+        <option value="教育">教育</option>
+        <option value="金融・保険業">金融・保険業</option>
+        <option value="飲食">飲食</option>
+        </select>
+
+    <p>収入情報：</p>
+        <select name="year" id="year">
+        <option value="100万円未満">100万円未満</option>
+        <option value="100万円以上〜300万円未満">100万円以上〜300万円未満</option>
+        <option value="300万円以上〜500万円未満">300万円以上〜500万円未満</option>
+        <option value="500万円以上〜700万円未満">500万円以上〜700万円未満</option>
+        <option value="700万円以上〜1000万円未満">700万円以上〜1000万円未満</option>
+        <option value="1000万円以上">1000万円以上</option>
+        </select>
+
+        <div>
+            <button type="button" id="send">リクエスト送信</button>
+            <button type="button" id="keep">一時保存</button>
+        </div>
+        </fieldset>
+    </form>
+    <!-- データ出力場所 -->
+    <ul id="output"></ul>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <!-- 以下にfirebaseのコードを貼り付けよう -->
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase.js"></script>
+
+    <script>
+    // Your web app's Firebase configuration
+    var firebaseConfig = {
+        apiKey: "AIzaSyASMwYnicDSum4MAisQFjeREZR2qhbEgII",
+        authDomain: "chatapp-efc1d.firebaseapp.com",
+        projectId: "chatapp-efc1d",
+        storageBucket: "chatapp-efc1d.appspot.com",
+        messagingSenderId: "960440079918",
+        appId: "1:960440079918:web:a3fca6af03ea46974331bf"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    </script>
+    <script>
+        // 日時をいい感じの形式にする関数
+        function convertFromFirestoreTimestampToDatetime(timestamp) {
+        const _d = timestamp ? new Date(timestamp * 1000) : new Date();
+        const Y = _d.getFullYear();
+        const m = (_d.getMonth() + 1).toString().padStart(2, '0');
+        const d = _d.getDate().toString().padStart(2, '0');
+        const H = _d.getHours().toString().padStart(2, '0');
+        const i = _d.getMinutes().toString().padStart(2, '0');
+        const s = _d.getSeconds().toString().padStart(2, '0');
+        return `${Y}/${m}/${d} ${H}:${i}:${s}`;
+        }
+
+        const db = firebase.firestore().collection('chat');
+
+        //送信データ
+        $('#send').on('click', function () {
+        const data = {
+        name:$("#name").val(),
+        text:$("#text").val(),
+        job:$("#job").val(),
+        industry:$("#industry").val(),
+        year:$("#year").val(),
+        time: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+        db.add(data);
+        $('#text').val('');
+            
+    });
+
+    //一時保存のデータ
+    $("#keep").on("click",function(){
+        const title=$("#input").val
+        const data = {    
+        name:$("#name").val(),
+        text:$("#text").val(),
+        job:$("#job").val(),
+        industry:$("#industry").val(),
+        year:$("#year").val(),
+    };  
+        console.log(data)
+        const jsonData = JSON.stringify(data);
+        console.log(jsonData)
+        localStorage.setItem(title, jsonData);
+        });
+
+    db.orderBy('time', 'desc').onSnapshot(function (querySnapshot) {
+    console.log(querySnapshot.docs);
+    //生データを扱いやすい形に変換する処理
+    const dataArray = [];
+    querySnapshot.docs.forEach(function (doc) {
+    const data = {
+        id: doc.id,
+        data: doc.data(),
+    };
+    dataArray.push(data);
+    });
+    console.log(dataArray);
+    //扱いやすいデータからタグを生成する処理
+    const tagArray = [];
+    dataArray.forEach(function (data) {
+    tagArray.push(`
+        <div id="${data.id}">
+        <p>${data.data.name} at ${convertFromFirestoreTimestampToDatetime(data.data.time?.seconds)}</p>
+        <p>${data.data.text}</p>
+        <p>${data.data.job}</p>
+        <p>${data.data.industry}</p>
+        <p>${data.data.year}</p>
+
+        </div>
+    `)
+    });
+    //画面にタグを出力する処理
+    $('#output').html(tagArray);
+    });
+    </script>
+    </body>
+
+    </html>
